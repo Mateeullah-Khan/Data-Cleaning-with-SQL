@@ -1,0 +1,144 @@
+--Populate Property Address
+
+Select * from Housing_data 
+--where propertyaddress is null 
+order by uniqueid;
+
+--Self Joining to complete the Data
+select a.uniqueid, a.parcelid, a.propertyaddress, b.parcelid, b.propertyaddress, COALESCE(a.propertyaddress, b.propertyaddress)
+from housing_data a
+join housing_data b
+ on a.parcelid = b.parcelid
+ and a.uniqueid <> b.uniqueid
+ where a.propertyaddress is null
+ 
+Update Housing_Data a
+set propertyaddress = b.propertyaddress
+from housing_data b
+Where a.parcelid = b.parcelid
+ and a.uniqueid <> b.uniqueid
+ and a.propertyaddress is null
+ 
+--Breakig out Address into Individual Columns 
+ 
+Select propertyaddress from housing_data 
+ 
+Select 
+substring(propertyaddress, 1, STRPOS(propertyaddress, ',')-1) as Address,
+substring(propertyaddress,STRPOS(propertyaddress, ',')+1) as Address_City
+
+from housing_data
+
+--Add Column in Table 
+ALTER TABLE Housing_data
+ADD PropertySplitAddress VARCHAR(255)
+
+UPDATE Housing_Data
+SET PropertySplitAddress = SUBSTRING(propertyaddress, 1, STRPOS(propertyaddress, ',')-1) 
+
+Alter table Housing_data
+Add PropertyCityAddress varchar (255)
+
+UPDATE Housing_Data
+Set
+PropertyCityAddress= substring(propertyaddress,STRPOS(propertyaddress, ',')+1)
+
+
+--Owner Data Split
+SELECT SPLIT_PART(owneraddress,',',1),
+SPLIT_PART(owneraddress,',',2),
+SPLIT_PART(owneraddress,',',3)
+FROM housing_data
+WHERE owneraddress IS NOT NULL
+
+Alter table housing_data
+add OwnerSplitAddress  varchar
+
+Update Housing_data
+Set OwnerSplitAddress = SPLIT_PART(owneraddress,',',1) 	
+
+ALTER TABLE housing_data
+ADD OwnerSplitCity VARCHAR(255)
+
+Update housing_data
+Set OwnerSplitCity = SPLIT_PART(owneraddress,',',2) 
+
+ALTER TABLE housing_data
+ADD OwnerSplitState VARCHAR(255)
+
+Update housing_data
+Set OwnerSplitState  = SPLIT_PART(owneraddress,',',3) 
+
+Select * from housing_data
+
+SELECT DISTINCT(soldasvacant), COUNT(soldasvacant)
+FROM housing_data
+GROUP BY soldasvacant
+ORDER BY count
+limit 5
+
+Select soldasvacant,
+Case When soldasvacant = 'Y' THEN 'YES'
+     WHEN soldasvacant = 'N' THEN 'NO'
+	 ELSE  soldasvacant
+	 END as soldasvacant_1
+	From housing_data
+	
+update housing_data
+Set soldasvacant=Case When soldasvacant = 'Y' THEN 'YES'
+     WHEN soldasvacant = 'N' THEN 'NO'
+	 ELSE  soldasvacant
+	 END 
+	 
+--Remove Duplicates
+
+
+With RownumCTE as(
+SELECT *,
+    ROW_NUMBER() OVER(
+    PARTITION BY PARCELID,
+    propertyaddress,
+    saleprice,
+    saledate,
+    legalreference
+    ORDER BY uniqueid
+    ) row_num
+FROM Housing_data
+)
+Select * 
+from RownumCTE
+Where row_num>1
+
+
+
+WITH RowNumCTE AS(
+SELECT *,
+    ROW_NUMBER() OVER(
+    PARTITION BY PARCELID,
+    propertyaddress,
+    saleprice,
+    saledate,
+    legalreference
+    ORDER BY uniqueid
+    ) row_num
+FROM housing_data
+LIMIT 500
+)
+
+DELETE 
+FROM RowNumCTE
+WHERE row_num > 1;
+
+--Delete Unused Columns 
+
+ALTER TABLE housing_data
+DROP COLUMN owneraddress, 
+DROP COLUMN taxdistrict, 
+DROP COLUMN propertyaddress
+
+Alter Table housing_data
+DROP COLUMN saledate
+
+Select * from housing_data
+
+
